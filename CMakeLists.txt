@@ -29,8 +29,8 @@ find_package(HDF5 COMPONENTS C HL REQUIRED)
 # Internal products
 
 add_subdirectory(pybind11)
-pybind11_add_module(pyhdf5 src/ex_table_01.c)
+pybind11_add_module(pyhdf5 src/ex_table_01.cpp)
 include_directories(SYSTEM ${HDF5_INCLUDE_DIRS})
 
-target_link_libraries(pyhdf5 PRIVATE CMakeTutorial ${HDF5_LIBRARIES})
-target_link_libraries(pyhdf5 PRIVATE CMakeTutorial ${HDF5_HL_LIBRARIES})
+target_link_libraries(pyhdf5 PRIVATE ${HDF5_LIBRARIES})
+target_link_libraries(pyhdf5 PRIVATE ${HDF5_HL_LIBRARIES})

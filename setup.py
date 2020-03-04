@@ -1,73 +1,69 @@
 import os
+import re
+import sys
 import platform
 import subprocess
-import sys
-from pprint import pprint
+
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
+from distutils.version import LooseVersion
 
-
-c_module_name = 'pyhdf5'
-
-# Command line flags forwarded to CMake (for debug purpose)
-cmake_cmd_args = []
-for f in sys.argv:
-    if f.startswith('-D'):
-        cmake_cmd_args.append(f)
-
-for f in cmake_cmd_args:
-    sys.argv.remove(f)
 
 class CMakeExtension(Extension):
-    def __init__(self, name, cmake_lists_dir='.', **kwargs):
-        Extension.__init__(self, name, sources=[], **kwargs)
-        self.cmake_lists_dir = os.path.abspath(cmake_lists_dir)
+    def __init__(self, name, sourcedir=''):
+        Extension.__init__(self, name, sources=[])
+        self.sourcedir = os.path.abspath(sourcedir)
 
 
 class CMakeBuild(build_ext):
-    def build_extensions(self):
-        # Ensure that CMake is present and working
+    def run(self):
         try:
             out = subprocess.check_output(['cmake', '--version'])
         except OSError:
-            raise RuntimeError('Cannot find CMake executable')
+            raise RuntimeError("CMake must be installed to build the following extensions: " +
+                               ", ".join(e.name for e in self.extensions))
+
+        if platform.system() == "Windows":
+            cmake_version = LooseVersion(re.search(r'version\s*([\d.]+)', out.decode()).group(1))
+            if cmake_version < '3.1.0':
+                raise RuntimeError("CMake >= 3.1.0 is required on Windows")
 
         for ext in self.extensions:
+            self.build_extension(ext)
 
-            extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
-            cfg = 'Debug'
+    def build_extension(self, ext):
+        extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
+        cmake_args = ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir,
+                      '-DPYTHON_EXECUTABLE=' + sys.executable]
 
-            cmake_args = [
-                # Ask CMake to place the resulting library in the directory
-                # containing the extension
-                '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir),
-                # Other intermediate static libraries are placed in a
-                # temporary build directory instead
-                '-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), self.build_temp),
-                # Hint CMake to use the same Python executable that
-                # is launching the build, prevents possible mismatching if
-                # multiple versions of Python are installed
-                '-DPYTHON_EXECUTABLE={}'.format(sys.executable),
-                # Add other project-specific CMake arguments if needed
-                # ...
-            ]
+        cfg = 'Debug' if self.debug else 'Release'
+        build_args = ['--config', cfg]
 
-            cmake_args += cmake_cmd_args
+        if platform.system() == "Windows":
+            cmake_args += ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir)]
+            if sys.maxsize > 2**32:
+                cmake_args += ['-A', 'x64']
+            build_args += ['--', '/m']
+        else:
+            cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
+            build_args += ['--', '-j2']
 
-            if not os.path.exists(self.build_temp):
-                os.makedirs(self.build_temp)
+        env = os.environ.copy()
+        env['CXXFLAGS'] = '{} -DVERSION_INFO=\\"{}\\"'.format(env.get('CXXFLAGS', ''),
+                                                              self.distribution.get_version())
+        if not os.path.exists(self.build_temp):
+            os.makedirs(self.build_temp)
+        subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
+        subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp)
 
-            # Config
-            subprocess.check_call(['cmake', ext.cmake_lists_dir] + cmake_args,
-                                  cwd=self.build_temp)
-
-            # Build
-            subprocess.check_call(['cmake', '--build', '.', '--config', cfg],
-                                  cwd=self.build_temp)
-
-setup(name = "pyhdf5",
-      packages = ["pyhdf5"],
-      version = "0.1",
-      ext_modules=[CMakeExtension(c_module_name)],
-      cmdclass={'build_ext': CMakeBuild},
+setup(
+    name='CMakeTutorial',
+    version='0.0.1',
+    author='Scott Coughlin',
+    author_email='scottcouglhin2014@u.northwestern',
+    description='A test project using pybind11 and CMake',
+    long_description='',
+    ext_modules=[CMakeExtension('pyhdf5')],
+    cmdclass=dict(build_ext=CMakeBuild),
+    zip_safe=False,
       );
