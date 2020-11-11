@@ -1,8 +1,4 @@
 # CMakeTutorial
-
-# This minimum version is mostly set in order to get a newer version
-# of the FindMPI check.  Note that you can easily install a newer cmake version
-# using conda or pip.
 cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 
 # enable USE_PYTHON
