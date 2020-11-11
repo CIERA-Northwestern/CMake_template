@@ -134,7 +134,6 @@ int main( void )
  return 0;
 }
 
-
 namespace py = pybind11;
 
 PYBIND11_MODULE(pyhdf5, m) {

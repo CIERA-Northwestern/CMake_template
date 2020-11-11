@@ -13,7 +13,6 @@
 
 #include "hdf5.h"
 #include "hdf5_hl.h"
-#include <pybind11/pybind11.h>
 #include <stdlib.h>
 
 /*-------------------------------------------------------------------------
@@ -132,30 +131,4 @@ int main( void )
  H5Fclose( file_id );
 
  return 0;
-}
-
-
-namespace py = pybind11;
-
-PYBIND11_MODULE(pyhdf5, m) {
-    m.doc() = R"pbdoc(
-        Pybind11 example plugin
-        -----------------------
-        .. currentmodule:: cmake_example
-        .. autosummary::
-           :toctree: _generate
-           add
-           subtract
-    )pbdoc";
-
-    m.def("make_hdf5_table", &main, R"pbdoc(
-        Add two numbers
-        Some other explanation about the add function.
-    )pbdoc");
-
-#ifdef VERSION_INFO
-    m.attr("__version__") = VERSION_INFO;
-#else
-    m.attr("__version__") = "dev";
-#endif
 }

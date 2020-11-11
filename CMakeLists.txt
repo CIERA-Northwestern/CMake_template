@@ -5,32 +5,25 @@
 # using conda or pip.
 cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 
-foreach(policy
-    CMP0048
-    CMP0074
-    CMP0077
-  )
-  if(POLICY ${policy})
-    cmake_policy(SET ${policy} NEW)
-  endif()
-endforeach()
+# enable USE_PYTHON
+option(WITH_PYTHON "Option description" OFF)
+add_definitions(-DWITH_PYTHON)
 
-project(CMakeTutorial VERSION 1.0.0 LANGUAGES C CXX)
-
-# Force C++11
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(WITH_PYTHON)
+    project(CMakeTutorial VERSION 1.0.0 LANGUAGES C CXX)
+else()
+    project(CMakeTutorial VERSION 1.0.0 LANGUAGES C)
+endif()
 
 
 # External packages
 
 find_package(HDF5 COMPONENTS C HL REQUIRED)
 
-# Internal products
-
-add_subdirectory(pybind11)
-pybind11_add_module(pyhdf5 src/ex_table_01.cpp)
-include_directories(SYSTEM ${HDF5_INCLUDE_DIRS})
-
-target_link_libraries(pyhdf5 PRIVATE ${HDF5_LIBRARIES})
-target_link_libraries(pyhdf5 PRIVATE ${HDF5_HL_LIBRARIES})
+if(WITH_PYTHON)
+    # Force C++11
+    set(CMAKE_CXX_STANDARD 11)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+    add_subdirectory(pybind11)
+endif()
+add_subdirectory(src)
